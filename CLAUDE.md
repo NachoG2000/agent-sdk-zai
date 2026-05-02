@@ -14,9 +14,10 @@ The whole point is: prove that a stock Anthropic agent harness can drive a non-A
 - `npm run agent` — start the REPL. Type messages at the `you>` prompt; `/exit` or Ctrl+D quits.
 - `npm run typecheck` — `tsc --noEmit`. There are no tests; typecheck is the only static check.
 
-The agent reads two env vars at startup and exits early if either is missing:
+The agent reads three env vars at startup and exits early if any is missing:
 - `ANTHROPIC_BASE_URL` — must be `https://api.z.ai/api/anthropic`
 - `ANTHROPIC_AUTH_TOKEN` — the z.ai API key
+- `BUTTERBASE_API_KEY` — Butterbase API key (`bb_sk_...`), sent as a Bearer token to the Butterbase MCP server
 
 Copy `.env.example` to `.env` and source it, e.g. `set -a && source .env && set +a && npm run agent -- "..."`.
 

@@ -25,6 +25,11 @@ if (process.env.HIGGSFIELD_TOKEN) {
   higgsfieldHeaders.Authorization = `Bearer ${process.env.HIGGSFIELD_TOKEN}`;
 }
 
+if (!process.env.BUTTERBASE_API_KEY) {
+  console.error("Missing BUTTERBASE_API_KEY. Put it in .env (see .env.example) — keys look like bb_sk_...");
+  process.exit(1);
+}
+
 const mcpServers = {
   poc: tools,
   higgsfield: {
@@ -32,12 +37,18 @@ const mcpServers = {
     url: "https://mcp.higgsfield.ai/mcp",
     ...(Object.keys(higgsfieldHeaders).length > 0 ? { headers: higgsfieldHeaders } : {}),
   },
+  butterbase: {
+    type: "http" as const,
+    url: "https://api.butterbase.ai/mcp",
+    headers: { Authorization: `Bearer ${process.env.BUTTERBASE_API_KEY}` },
+  },
 };
 
 const allowedTools = [
   "mcp__poc__get_weather",
   "mcp__poc__wikipedia_summary",
   "mcp__higgsfield",
+  "mcp__butterbase",
 ];
 
 const baseOptions = {
@@ -49,8 +60,10 @@ const baseOptions = {
     preset: "claude_code" as const,
     append:
       "You are a terse hackathon demo chat agent running on z.ai's GLM via the Anthropic-compatible API. " +
-      "You have local tools (get_weather, wikipedia_summary) and a remote Higgsfield MCP server " +
-      "exposing image and video generation (Seedance, Kling, Veo, Soul, Nano Banana, Flux). " +
+      "You have local tools (get_weather, wikipedia_summary), a remote Higgsfield MCP server " +
+      "exposing image and video generation (Seedance, Kling, Veo, Soul, Nano Banana, Flux), " +
+      "and a remote Butterbase MCP server (backend-as-a-service: apps, schema/migrations, rows, " +
+      "auth/RLS, storage, serverless functions, frontend deploys, realtime). " +
       "Prefer tools over guessing. Keep replies short and conversational.",
   },
 };
