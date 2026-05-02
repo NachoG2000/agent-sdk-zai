@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. It is the constitution of the project. The principles below are not aspirational — they are the rules the build does not break, no matter how clever a shortcut seems.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository. It is the constitution of the project. The principles below are not aspirational — they are the rules the build does not break, no matter how clever a shortcut seems.
 
 ## Project: PreOp
 
@@ -38,7 +38,7 @@ These are fixed for the hackathon. Treat them as constraints, not choices.
 
 - **Image + video generation: imarouter** (`https://api.imarouter.com`). One unified router behind one API key for both modalities. We use `gpt-image-2` for stills and `seedance-2.0-fast` for clips; both are exposed by the local `generate_image` and `generate_video` tools, which share auth, base URL, and the create-task + poll loop. Both endpoints take JSON only — reference and first-frame images are passed as **URLs**, never multipart. The image endpoint returns a hosted URL directly, so the image → video chain has no intermediate upload step. imarouter URLs expire in ~30 days, so anything that needs to outlive the session goes to Butterbase storage.
 - **Deployment + durable storage: Butterbase.ai.** Mandatory for the hackathon — the demo must run on Butterbase. The Butterbase MCP server is already registered in the agent (apps, schema, rows, auth, storage, functions, deploys, realtime). Final stills and videos are persisted to Butterbase storage; the deploy itself runs there. Do not introduce a second backend.
-- **Agent harness: Claude Agent SDK (TypeScript), routed to z.ai's GLM models** via z.ai's Anthropic-compatible endpoint. No code change is required to swap models — only env-var overrides. This is what makes the orchestration layer cheap to run.
+- **Agent harness: Codex Agent SDK (TypeScript), routed to z.ai's GLM models** via z.ai's Anthropic-compatible endpoint. No code change is required to swap models — only env-var overrides. This is what makes the orchestration layer cheap to run.
 
 ## Scope discipline for the hackathon
 
@@ -80,7 +80,7 @@ The hackathon demo shows one knee. The roadmap is every body part, every procedu
 
 ## Commands
 
-- `npm install` — install deps (`@anthropic-ai/claude-agent-sdk`, `zod`, `tsx`).
+- `npm install` — install deps (`@anthropic-ai/Codex-agent-sdk`, `zod`, `tsx`).
 - `npm run agent -- "<diagnosis>"` — run the pipeline once on a piece of input text and exit. Input can also come from stdin (`echo "..." | npm run agent`). Optional `--out <path>` overrides the manifest path.
 - `npm run typecheck` — `tsc --noEmit`. There are no tests; typecheck is the only static check.
 
@@ -112,9 +112,9 @@ These tools are registered together under one in-process MCP server named `poc` 
 - **One-shot mode is just `prompt: <string>`.** That's the SDK's intended pattern for non-interactive runs — no streaming-input async generator, no `continue: true`, no readline plumbing. The `query()` async iterator finishes on its own when the model emits `result`. If you ever need multi-turn again, switch the prompt to an `AsyncIterable<SDKUserMessage>` and add `continue: true` to subsequent `query()` calls; the streaming-input pattern is preserved in git history if needed.
 - **Tool-use IDs pair `assistant` and `user` events.** The `assistant.tool_use` block carries an `id`; the corresponding `user.tool_result` block references it via `tool_use_id`. The agent uses a `Map` keyed by that id so each recorded tool call has both its input and its result, even when multiple tool calls run in a single turn.
 - **URL extraction is regex over tool-result text.** Pragmatic and reliable as long as `tools/imarouter.ts` keeps returning `Image ready: <url>` / `Video ready (...): <url>`. If the tool output format changes, the regex in `agent.ts` needs to follow.
-- **`allowedTools` is an allowlist, not a hint.** Listing only MCP tool IDs silently disables every built-in (Bash/Read/Write/etc.). Important because z.ai-routed runs shouldn't try to spawn `claude_code` built-ins that may depend on Anthropic-only behavior.
+- **`allowedTools` is an allowlist, not a hint.** Listing only MCP tool IDs silently disables every built-in (Bash/Read/Write/etc.). Important because z.ai-routed runs shouldn't try to spawn `Codex` built-ins that may depend on Anthropic-only behavior.
 - **`permissionMode: "bypassPermissions"`** is set so the demo runs end-to-end without prompting. Every `generate_image` and `generate_video` call costs real money per task (settled `amount_usd` is in the polled response) — be deliberate about loops that retry on failure.
-- **`systemPrompt` uses the `claude_code` preset with an `append`.** The preset gives the model the standard agent scaffolding; the append narrows behavior to PreOp's pipeline tools.
+- **`systemPrompt` uses the `Codex` preset with an `append`.** The preset gives the model the standard agent scaffolding; the append narrows behavior to PreOp's pipeline tools.
 - **No `model` is set explicitly.** z.ai applies its own Sonnet/Opus → GLM mapping on the server side. Pinning `ANTHROPIC_MODEL=glm-4.6` overrides this but blocks automatic upgrades to newer GLM releases.
 
 ## Adding a new tool

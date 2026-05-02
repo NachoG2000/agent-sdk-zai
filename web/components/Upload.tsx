@@ -10,74 +10,156 @@ export default function Upload({
 }) {
   const [diagnosis, setDiagnosis] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const canSubmit = diagnosis.trim().length > 0 || fileName !== null;
 
   return (
-    <div className="w-full max-w-xl">
-      <header className="mb-10 text-center">
-        <h1 className="text-4xl font-light tracking-tight">PreOp</h1>
-        <p className="mt-3 text-sm text-neutral-400">
-          A short film of what is about to happen inside you.
+    <div className="w-full max-w-[600px] animate-fade-up">
+      <header className="mb-14">
+        <div className="mb-3 flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted">
+          <span className="inline-block h-px w-6 bg-line-strong" />
+          <span>Pre-operative film</span>
+        </div>
+        <h1 className="font-display text-[64px] leading-[0.95] font-light tracking-tight text-ink">
+          A film of what is
+          <br />
+          <em className="font-normal italic text-terracotta">about to happen</em>
+          <br />
+          inside you.
+        </h1>
+        <p className="mt-6 max-w-[46ch] text-[15px] leading-[1.6] text-ink-2">
+          Tell us about your upcoming surgery. In about thirty seconds, we will
+          make you a short film that walks you through your body, the procedure,
+          and the healed result.
         </p>
       </header>
 
       <form
-        className="space-y-5"
+        className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           if (!canSubmit) return;
           onSubmit({ diagnosis: diagnosis.trim(), fileName });
         }}
       >
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="flex w-full items-center justify-between rounded-xl border border-dashed border-neutral-700 bg-neutral-950 px-5 py-6 text-left transition hover:border-neutral-500 hover:bg-neutral-900"
+        <label
+          className="block text-[11px] uppercase tracking-[0.18em] text-muted"
+          htmlFor="diagnosis"
         >
-          <div>
-            <div className="text-sm font-medium">
-              {fileName ?? "Upload your medical report (PDF)"}
-            </div>
-            <div className="mt-1 text-xs text-neutral-500">
-              {fileName ? "Tap to replace" : "Optional. We accept PDF."}
-            </div>
-          </div>
-          <span className="text-neutral-500">→</span>
-        </button>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="application/pdf"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) setFileName(f.name);
-          }}
+          Describe your case
+        </label>
+        <textarea
+          id="diagnosis"
+          value={diagnosis}
+          onChange={(e) => setDiagnosis(e.target.value)}
+          placeholder="A torn meniscus in my right knee. My surgeon said arthroscopic repair, scheduled next Tuesday."
+          rows={4}
+          className="w-full resize-none rounded-md border border-line bg-cream-2/50 px-5 py-4 font-display text-[19px] leading-[1.5] text-ink placeholder:font-display placeholder:italic placeholder:font-light placeholder:text-faint focus:border-line-strong focus:bg-cream-2 focus:outline-none"
         />
 
-        <div className="relative">
-          <textarea
-            value={diagnosis}
-            onChange={(e) => setDiagnosis(e.target.value)}
-            placeholder="Or describe your diagnosis in your own words. Example: torn meniscus, surgery scheduled next Tuesday."
-            rows={4}
-            className="w-full resize-none rounded-xl border border-neutral-800 bg-neutral-950 px-5 py-4 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            const f = e.dataTransfer.files?.[0];
+            if (f && f.type === "application/pdf") setFileName(f.name);
+          }}
+          className="relative"
+        >
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className={`flex w-full items-center justify-between rounded-md border px-5 py-4 text-left transition ${
+              dragOver
+                ? "border-terracotta bg-terracotta-tint/40"
+                : fileName
+                  ? "border-line-strong bg-cream-2/40"
+                  : "border-dashed border-line bg-transparent hover:border-line-strong hover:bg-cream-2/30"
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <span className="grid h-9 w-9 place-items-center rounded-full border border-line bg-cream text-muted">
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className="h-3.5 w-3.5"
+                  aria-hidden
+                >
+                  <path
+                    d="M8 11V3M8 3L4.5 6.5M8 3L11.5 6.5"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M2.5 11.5V13H13.5V11.5"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+              <span>
+                <span className="block text-[14px] font-medium text-ink">
+                  {fileName ?? "Or attach a medical report"}
+                </span>
+                <span className="mt-0.5 block text-[12px] text-muted">
+                  {fileName
+                    ? "Tap to replace"
+                    : "PDF only. We read it once and forget."}
+                </span>
+              </span>
+            </span>
+            <span className="text-[12px] text-faint">
+              {fileName ? "Replace" : "Browse"}
+            </span>
+          </button>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) setFileName(f.name);
+            }}
           />
         </div>
 
         <button
           type="submit"
           disabled={!canSubmit}
-          className="w-full rounded-xl bg-white px-5 py-4 text-sm font-medium text-black transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
+          className="group mt-2 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-5 py-4 text-[14px] font-medium text-cream transition hover:bg-terracotta disabled:cursor-not-allowed disabled:bg-cream-3 disabled:text-faint"
         >
-          Generate my video
+          <span>Make my film</span>
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            className="h-3.5 w-3.5 transition group-enabled:group-hover:translate-x-0.5"
+            aria-hidden
+          >
+            <path
+              d="M3 8H13M13 8L9 4M13 8L9 12"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
       </form>
 
-      <p className="mt-8 text-center text-xs text-neutral-600">
-        Your video is generated for you and only you.
+      <p className="mt-10 text-[12px] leading-[1.6] text-faint">
+        Made for one patient at a time. Your input never leaves the session;
+        nothing is stored against your name.
       </p>
     </div>
   );

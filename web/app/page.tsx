@@ -17,7 +17,7 @@ export default function Home() {
   const [submission, setSubmission] = useState<Submission | null>(null);
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12">
+    <main className="flex min-h-screen flex-col items-center px-6 py-8 sm:py-10 lg:py-8 [&>*]:my-auto">
       {stage === "upload" && (
         <Upload
           onSubmit={(s) => {

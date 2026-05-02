@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "svg-icon-generator": {
+      "source": "jeremylongshore/claude-code-plugins-plus-skills",
+      "sourceType": "github",
+      "skillPath": "planned-skills/generated/18-visual-content/svg-icon-generator/SKILL.md",
+      "computedHash": "04ff0e7ae38476a70c290ddcdb58e1af690d0ce04c4e8fde6c4aa891e11f7af9"
+    }
+  }
+}

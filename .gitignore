@@ -4,3 +4,11 @@ node_modules/
 *.log
 .DS_Store
 dist/
+
+# Generated PreOp run artifacts (manifests, downloaded clips, recovered tasks).
+# Each run produces 10–20 MB of video; not for git.
+out/
+
+# Local agent tooling state (Claude Code, claude-skills installs).
+.claude/
+.agents/
