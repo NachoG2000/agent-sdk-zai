@@ -87,15 +87,6 @@ body {
   }
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
 @keyframes breathe {
   0%, 100% {
     transform: scale(1);
@@ -123,17 +114,3 @@ body {
   animation: breathe 4s ease-in-out infinite;
 }
 
-.shimmer-text {
-  background: linear-gradient(
-    90deg,
-    var(--color-muted) 0%,
-    var(--color-ink) 45%,
-    var(--color-ink) 55%,
-    var(--color-muted) 100%
-  );
-  background-size: 200% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  animation: shimmer 2.4s linear infinite;
-}

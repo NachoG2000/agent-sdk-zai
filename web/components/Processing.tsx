@@ -1,217 +1,237 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Submission } from "@/app/page";
+import {
+  streamPreopRun,
+  type PreopRunResult,
+  type PreopStreamEvent,
+} from "@/lib/preop";
 
-type Step = {
-  stage: number;
-  kind: "stage" | "thought";
-  text: string;
-  delay: number;
-};
-
-const STAGES = [
-  "Reading your diagnosis",
-  "Sketching the storyboard",
-  "Painting the anatomy",
-  "Filming the procedure",
+const FRAMES = [
+  { n: 1, label: "Healthy baseline" },
+  { n: 2, label: "The injury" },
+  { n: 3, label: "Beginning the repair" },
+  { n: 4, label: "The moment of repair" },
+  { n: 5, label: "Your healed body" },
+  { n: 6, label: "Returning to life" },
 ] as const;
 
-const SCRIPT: Step[] = [
-  { stage: 0, kind: "stage", text: STAGES[0], delay: 0 },
-  { stage: 0, kind: "thought", text: "Identifying the procedure family", delay: 700 },
-  { stage: 0, kind: "thought", text: "Mapping to arthroscopic meniscus repair", delay: 900 },
-  { stage: 0, kind: "thought", text: "Pulling anatomical context for the medial meniscus", delay: 1100 },
-
-  { stage: 1, kind: "stage", text: STAGES[1], delay: 1200 },
-  { stage: 1, kind: "thought", text: "Establishing the six-frame narrative arc", delay: 700 },
-  { stage: 1, kind: "thought", text: "Frame 1 · healthy baseline anatomy", delay: 800 },
-  { stage: 1, kind: "thought", text: "Frame 3 · the lateral approach, instruments entering", delay: 900 },
-  { stage: 1, kind: "thought", text: "Frame 5 · the repair, healed and quiet", delay: 900 },
-
-  { stage: 2, kind: "stage", text: STAGES[2], delay: 1100 },
-  { stage: 2, kind: "thought", text: "Locking the style reference from frame 1", delay: 900 },
-  { stage: 2, kind: "thought", text: "Painting frame 2 · the tear pattern", delay: 1000 },
-  { stage: 2, kind: "thought", text: "Painting frame 3 · arthroscope sleeve, slow approach", delay: 1100 },
-  { stage: 2, kind: "thought", text: "Painting frame 5 · the smoothed edge, post-trim", delay: 1100 },
-  { stage: 2, kind: "thought", text: "Holding palette continuity across all six frames", delay: 1000 },
-
-  { stage: 3, kind: "stage", text: STAGES[3], delay: 1200 },
-  { stage: 3, kind: "thought", text: "Animating frame one into frame two", delay: 900 },
-  { stage: 3, kind: "thought", text: "Layering the voiceover narration", delay: 900 },
-  { stage: 3, kind: "thought", text: "Color-grading toward warm anatomical neutrals", delay: 1000 },
-  { stage: 3, kind: "thought", text: "Mastering the vertical export", delay: 900 },
-];
+const STAGE_NARRATION: Record<string, string> = {
+  starting: "Reading your diagnosis.",
+  sdk_init: "Preparing the scene.",
+  painting: "Painting the anatomy in your style.",
+  filming: "Bringing each frame to life.",
+  composing: "Combining the chapters into one film.",
+  storing: "Saving your film.",
+  storage_warning: "Using the temporary video link.",
+};
 
 export default function Processing({
   submission,
   onDone,
+  onBack,
 }: {
   submission: Submission;
-  onDone: () => void;
+  onDone: (result: PreopRunResult) => void;
+  onBack: () => void;
 }) {
-  const [revealed, setRevealed] = useState<number>(0);
+  const [events, setEvents] = useState<PreopStreamEvent[]>([]);
   const [elapsed, setElapsed] = useState(0);
-  const startRef = useRef<number>(performance.now());
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const startedRef = useRef<number>(performance.now());
 
   useEffect(() => {
-    let cancelled = false;
-    let i = 0;
+    const abortController = new AbortController();
+    const startTimer = window.setTimeout(() => {
+      streamPreopRun(
+        submission.diagnosis,
+        submission.runId,
+        (event) => {
+          setEvents((current) => [...current, event]);
+          if (event.type === "done") onDone(event.result);
+          if (event.type === "error") setError(event.error);
+        },
+        abortController.signal,
+      ).catch((err) => {
+        if (abortController.signal.aborted) return;
+        setError(err instanceof Error ? err.message : String(err));
+      });
+    }, 100);
 
-    const advance = () => {
-      if (cancelled) return;
-      if (i >= SCRIPT.length) {
-        const tail = setTimeout(() => !cancelled && onDone(), 900);
-        return () => clearTimeout(tail);
-      }
-      const step = SCRIPT[i];
-      setTimeout(() => {
-        if (cancelled) return;
-        i += 1;
-        setRevealed(i);
-        advance();
-      }, step.delay);
-    };
-
-    advance();
     return () => {
-      cancelled = true;
+      window.clearTimeout(startTimer);
+      abortController.abort();
     };
-  }, [onDone]);
+  }, [onDone, submission.diagnosis, submission.runId]);
 
   useEffect(() => {
     const id = setInterval(() => {
-      setElapsed((performance.now() - startRef.current) / 1000);
-    }, 80);
+      setElapsed((performance.now() - startedRef.current) / 1000);
+    }, 250);
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [revealed]);
+  const frames = useMemo(() => {
+    const stills = new Map<number, string>();
+    const clips = new Set<number>();
+    for (const e of events) {
+      if (e.type === "artifact") {
+        if (e.kind === "image") stills.set(e.index, e.url);
+        else if (e.kind === "video") clips.add(e.index);
+      }
+    }
+    return FRAMES.map((f) => ({
+      ...f,
+      stillUrl: stills.get(f.n) ?? null,
+      hasClip: clips.has(f.n),
+    }));
+  }, [events]);
 
-  const visible = SCRIPT.slice(0, revealed);
-  const lastIdx = visible.length - 1;
-  const currentStage = visible[lastIdx]?.stage ?? 0;
+  const latestStatus = [...events]
+    .reverse()
+    .find((event) => event.type === "status");
+  const stageKey =
+    latestStatus?.type === "status" ? latestStatus.stage : "starting";
+  const narration =
+    STAGE_NARRATION[stageKey] ??
+    (latestStatus?.type === "status"
+      ? latestStatus.message
+      : "Opening the session.");
 
-  const stageStartTimes = computeStageStarts(visible);
+  const breathingIndex = (() => {
+    if (error) return -1;
+    if (stageKey === "starting" || stageKey === "sdk_init") return 0;
+    if (stageKey === "painting") {
+      return frames.findIndex((f) => !f.stillUrl);
+    }
+    if (stageKey === "filming") {
+      return frames.findIndex((f) => !f.hasClip);
+    }
+    return -1;
+  })();
+
+  const activeLabel = (() => {
+    if (error) return "Generation paused";
+    if (stageKey === "starting" || stageKey === "sdk_init")
+      return "Opening the session";
+    if (stageKey === "storing") return "Saving your film";
+    if (stageKey === "storage_warning") return "Film ready";
+    if (breathingIndex === -1) return "Final touches";
+    return frames[breathingIndex].label;
+  })();
 
   return (
     <div className="w-full max-w-[640px] animate-fade-up">
       <header className="mb-10">
-        <div className="mb-3 flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted">
+        <div className="mb-6 flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted">
           <span className="relative inline-flex h-1.5 w-1.5">
             <span className="absolute inset-0 rounded-full bg-terracotta animate-pulse-dot" />
           </span>
-          <span>Generating your film</span>
+          <span>Composing your film</span>
           <span className="ml-auto font-mono text-[11px] tabular-nums text-faint">
             {formatTime(elapsed)}
           </span>
         </div>
-        <h2 className="font-display text-[36px] leading-[1.05] font-light text-ink">
-          Making a film just for{" "}
-          <em className="italic text-terracotta">you</em>.
+        <h2 className="font-display text-[34px] leading-[1.05] font-light text-ink sm:text-[40px]">
+          Frame by frame,
+          <br />
+          just for{" "}
+          <em className="italic font-normal text-terracotta">you</em>.
         </h2>
-        <p className="mt-3 max-w-[52ch] text-[14px] leading-[1.6] text-ink-2">
-          {submission.fileName
-            ? `Reading ${submission.fileName} and translating it into something you can watch.`
-            : "Translating your words into anatomy, then anatomy into a short film."}
-        </p>
       </header>
 
-      <div
-        ref={scrollRef}
-        className="relative max-h-[420px] overflow-hidden rounded-md border border-line bg-cream-2/40 px-6 py-5"
-      >
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-cream-2 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-cream-2 to-transparent" />
+      <div className="mb-8 grid grid-cols-6 gap-1.5 sm:gap-2.5">
+        {frames.map((frame, idx) => {
+          const hasStill = !!frame.stillUrl;
+          const isActive = idx === breathingIndex;
+          const isWaiting = !hasStill && !isActive;
+          return (
+            <div
+              key={frame.n}
+              className={[
+                "relative overflow-hidden rounded-md border transition-[border-color,opacity] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] aspect-[9/16]",
+                hasStill
+                  ? "border-line-strong opacity-100"
+                  : isActive
+                    ? "border-terracotta/50 opacity-95"
+                    : "border-line opacity-55",
+              ].join(" ")}
+            >
+              <div
+                className={[
+                  "absolute inset-0 bg-cream-2",
+                  "bg-[radial-gradient(130%_85%_at_50%_25%,oklch(94%_0.045_40/0.9),oklch(93%_0.014_72/1)_72%)]",
+                  isActive && !hasStill ? "animate-breathe" : "",
+                  isWaiting ? "opacity-65" : "",
+                ].join(" ")}
+                aria-hidden
+              />
 
-        <ol className="space-y-1">
-          {visible.map((step, idx) => {
-            const isLast = idx === lastIdx;
-            const stageDone = step.stage < currentStage;
-            const stageT = stageStartTimes[step.stage] ?? 0;
+              {hasStill && (
+                <img
+                  src={frame.stillUrl!}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover animate-fade-in"
+                />
+              )}
 
-            if (step.kind === "stage") {
-              return (
-                <li
-                  key={idx}
-                  className="animate-fade-up flex items-baseline gap-3 pt-4 first:pt-0"
-                  style={{ animationDelay: "0ms" }}
-                >
-                  <span className="font-mono text-[10px] tabular-nums text-faint">
-                    {formatTime(stageT)}
-                  </span>
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center self-center">
-                    {stageDone ? (
-                      <svg
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        className="h-3.5 w-3.5 text-sage"
-                        aria-hidden
-                      >
-                        <path
-                          d="M3.5 8.5L6.5 11.5L12.5 5"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    ) : (
-                      <span className="relative inline-flex h-1.5 w-1.5">
-                        <span className="absolute inset-0 rounded-full bg-terracotta animate-pulse-dot" />
-                      </span>
-                    )}
-                  </span>
-                  <span
-                    className={
-                      stageDone
-                        ? "font-display text-[17px] font-normal text-ink"
-                        : isLast
-                          ? "shimmer-text font-display text-[17px] font-normal"
-                          : "font-display text-[17px] font-normal text-ink"
-                    }
-                  >
-                    {step.text}
-                  </span>
-                </li>
-              );
-            }
-
-            const thoughtT = stageT + idx * 0.05;
-            return (
-              <li
-                key={idx}
-                className="animate-fade-up flex items-baseline gap-3 pl-7"
+              <span
+                className={[
+                  "absolute left-1.5 top-1.5 font-mono text-[10px] tabular-nums tracking-tight",
+                  hasStill
+                    ? "text-cream/90 [text-shadow:0_1px_2px_oklch(20%_0.02_50/0.45)]"
+                    : "text-faint",
+                ].join(" ")}
               >
-                <span className="font-mono text-[10px] tabular-nums text-faint">
-                  {formatTime(thoughtT)}
-                </span>
+                {String(frame.n).padStart(2, "0")}
+              </span>
+
+              {frame.hasClip && (
                 <span
-                  className={
-                    isLast
-                      ? "shimmer-text text-[14px] leading-[1.55]"
-                      : "text-[14px] leading-[1.55] text-muted"
-                  }
-                >
-                  {step.text}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+                  aria-hidden
+                  className="absolute right-1.5 top-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-terracotta shadow-[0_0_0_2px_oklch(97%_0.012_75/0.55)]"
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      <p className="mt-6 text-[12px] leading-[1.6] text-faint">
-        Films take about thirty seconds to render. You can keep this tab open or
-        come back; nothing is lost.
-      </p>
+      <div className="space-y-1.5">
+        <div
+          key={`active-${activeLabel}`}
+          className="animate-fade-in font-display text-[20px] italic font-normal leading-[1.35] text-ink sm:text-[22px]"
+        >
+          {activeLabel}
+          <span className="text-faint">.</span>
+        </div>
+        <div
+          key={`stage-${stageKey}`}
+          className="animate-fade-in text-[13px] leading-[1.55] text-muted"
+        >
+          {narration}
+        </div>
+      </div>
+
+      {error ? (
+        <div className="mt-7 flex items-center justify-between gap-4">
+          <p className="max-w-[46ch] text-[12px] leading-[1.6] text-terracotta">
+            Generation stopped before a film was ready. {error}
+          </p>
+          <button
+            type="button"
+            onClick={onBack}
+            className="rounded-md bg-ink px-4 py-2.5 text-[12px] font-medium text-cream transition hover:bg-terracotta"
+          >
+            Try again
+          </button>
+        </div>
+      ) : (
+        <p className="mt-8 text-[12px] leading-[1.6] text-faint">
+          This usually takes a few minutes. Keep this tab open.
+        </p>
+      )}
     </div>
   );
 }
@@ -220,16 +240,4 @@ function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-function computeStageStarts(visible: Step[]) {
-  const starts: Record<number, number> = {};
-  let acc = 0;
-  for (const step of visible) {
-    if (step.kind === "stage" && starts[step.stage] === undefined) {
-      starts[step.stage] = acc;
-    }
-    acc += step.delay / 1000;
-  }
-  return starts;
 }

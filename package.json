@@ -6,6 +6,7 @@
   "description": "Hackathon PoC: Claude Agent SDK driving GLM models via the z.ai Anthropic-compatible endpoint.",
   "scripts": {
     "agent": "tsx agent.ts",
+    "api": "tsx server/preop-api.ts",
     "recover": "tsx scripts/recover-tasks.ts",
     "typecheck": "tsc --noEmit"
   },

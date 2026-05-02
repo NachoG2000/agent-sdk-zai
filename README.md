@@ -11,7 +11,8 @@ See `CLAUDE.md` for the full project constitution, pipeline, and architecture.
 ```bash
 npm install
 cp .env.example .env
-# fill in: ANTHROPIC_AUTH_TOKEN (z.ai), IMAROUTER_API_KEY, BUTTERBASE_API_KEY
+# fill in: ANTHROPIC_AUTH_TOKEN (z.ai), IMAROUTER_API_KEY,
+# BUTTERBASE_API_KEY, and BUTTERBASE_APP_ID
 ```
 
 ## Run (one-shot)
@@ -36,6 +37,31 @@ The script:
    - `out/preop-<timestamp>.json` — manifest containing the input, full tool-call log, every image and video URL, the final video URL, cost, duration, and the model's final assistant text.
    - `out/preop-<timestamp>.mp4` — the final video, downloaded from the imarouter URL (which expires in ~30 days).
 5. Prints the manifest path to **stdout** so it's easy to chain (`mpv "$(npm run agent -q -- '...')"`).
+
+## Run the frontend-connected worker
+
+The Butterbase-friendly web path is split in two pieces: a static Next.js frontend
+and a small Node worker that runs the Claude Agent SDK.
+
+```bash
+# terminal 1, repo root
+npm run api
+
+# terminal 2
+cd web
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+The worker exposes `POST /api/preop/runs` and streams newline-delimited JSON
+events while the SDK runs. The web app reads `NEXT_PUBLIC_PREOP_API_URL` and can
+be statically exported for Butterbase with:
+
+```bash
+cd web
+npm run build
+```
 
 ## How it works
 

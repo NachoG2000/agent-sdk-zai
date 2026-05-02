@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   title: "PreOp — a film of what is about to happen inside you",
   description:
     "A personalized two-minute film about your specific upcoming surgery. Calm, anatomical, made for you.",
+  icons: {
+    icon: "/icons/preop-app-icon.png",
+    apple: "/icons/preop-app-icon.png",
+  },
 };
 
 export default function RootLayout({

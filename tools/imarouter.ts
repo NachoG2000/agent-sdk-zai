@@ -73,7 +73,7 @@ function normalize(raw: TaskResult): NormalizedTask {
   return { status, url, error, amountUsd };
 }
 
-type TaskOutcome =
+export type TaskOutcome =
   | { ok: true; url: string; taskId: string; costUsd?: number }
   | { ok: false; error: string; taskId?: string };
 
@@ -138,6 +138,49 @@ async function runTask(kind: Kind, body: unknown): Promise<TaskOutcome> {
   } catch (err) {
     return { ok: false, error: (err as Error).message, taskId: id };
   }
+}
+
+export async function generateImageDirect(input: {
+  prompt: string;
+  reference_image_url?: string;
+  size?: string;
+  aspect_ratio?: string;
+  model?: string;
+}): Promise<TaskOutcome> {
+  return runTask("images", imageBody(input));
+}
+
+export async function generateImagesBatchDirect(input: {
+  frames: Array<{
+    prompt: string;
+    reference_image_url?: string;
+    size?: string;
+    aspect_ratio?: string;
+  }>;
+  model?: string;
+}): Promise<TaskOutcome[]> {
+  return Promise.all(
+    input.frames.map((frame) =>
+      runTask("images", imageBody({ ...frame, model: input.model ?? DEFAULT_IMAGE_MODEL })),
+    ),
+  );
+}
+
+export async function generateVideosBatchDirect(input: {
+  clips: Array<{
+    prompt: string;
+    first_frame_url?: string;
+    duration?: number;
+    aspect_ratio?: string;
+    size?: string;
+  }>;
+  model?: string;
+}): Promise<TaskOutcome[]> {
+  return Promise.all(
+    input.clips.map((clip) =>
+      runTask("videos", videoBody({ ...clip, model: input.model ?? DEFAULT_VIDEO_MODEL })),
+    ),
+  );
 }
 
 function imageBody(input: {

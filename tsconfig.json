@@ -11,5 +11,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["agent.ts", "tools/**/*.ts"]
+  "include": ["agent.ts", "server/**/*.ts", "src/**/*.ts", "tools/**/*.ts"]
 }
