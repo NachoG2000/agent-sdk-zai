@@ -1,0 +1,20 @@
+{
+  "name": "agent-sdk-zai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hackathon PoC: Claude Agent SDK driving GLM models via the z.ai Anthropic-compatible endpoint.",
+  "scripts": {
+    "agent": "tsx agent.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.10",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
