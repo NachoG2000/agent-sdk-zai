@@ -23,8 +23,11 @@ export default function Result({
   onRestart: () => void;
 }) {
   const [playing, setPlaying] = useState(false);
+  const [currentClip, setCurrentClip] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoUrl = result.storedVideo?.downloadUrl ?? result.finalVideoUrl ?? "";
+  const playlist = result.videoUrls.length > 1 ? result.videoUrls : videoUrl ? [videoUrl] : [];
+  const activeVideoUrl = playlist[currentClip] ?? videoUrl;
   const sourceLabel = useMemo(() => submission.diagnosis.slice(0, 58), [submission.diagnosis]);
   const duration = Math.max(0, Math.round(result.durationSeconds));
 
@@ -105,9 +108,8 @@ export default function Result({
                   <button
                     type="button"
                     onClick={() => {
-                      if (!videoRef.current) return;
-                      videoRef.current.currentTime = i * 4;
-                      void videoRef.current.play();
+                      setCurrentClip(Math.min(i, Math.max(playlist.length - 1, 0)));
+                      window.setTimeout(() => void videoRef.current?.play(), 0);
                     }}
                     className="group flex w-full items-baseline gap-4 rounded-sm py-1 text-left transition hover:bg-cream-2/60"
                   >
@@ -199,13 +201,20 @@ export default function Result({
             {videoUrl ? (
               <video
                 ref={videoRef}
-                src={videoUrl}
+                src={activeVideoUrl}
                 className="h-full w-full object-cover"
                 controls
                 playsInline
                 onPlay={() => setPlaying(true)}
                 onPause={() => setPlaying(false)}
-                onEnded={() => setPlaying(false)}
+                onEnded={() => {
+                  if (currentClip < playlist.length - 1) {
+                    setCurrentClip((clip) => clip + 1);
+                    window.setTimeout(() => void videoRef.current?.play(), 0);
+                  } else {
+                    setPlaying(false);
+                  }
+                }}
               />
             ) : (
               <div className="absolute inset-0 grid place-items-center px-6 text-center text-[13px] leading-[1.6] text-cream/75">

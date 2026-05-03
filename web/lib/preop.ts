@@ -30,7 +30,9 @@ export type PreopStreamEvent =
   | { type: "done"; result: PreopRunResult; ts: string }
   | { type: "error"; error: string; ts: string };
 
-const API_BASE = process.env.NEXT_PUBLIC_PREOP_API_URL ?? "http://127.0.0.1:8787";
+const RUNS_URL =
+  process.env.NEXT_PUBLIC_PREOP_RUNS_URL ??
+  `${process.env.NEXT_PUBLIC_PREOP_API_URL ?? "http://127.0.0.1:8787"}/api/preop/runs`;
 
 export async function streamPreopRun(
   diagnosis: string,
@@ -38,7 +40,7 @@ export async function streamPreopRun(
   onEvent: (event: PreopStreamEvent) => void,
   signal?: AbortSignal,
 ) {
-  const response = await fetch(`${API_BASE}/api/preop/runs`, {
+  const response = await fetch(RUNS_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ diagnosis, idempotencyKey }),
